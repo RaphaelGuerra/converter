@@ -4,19 +4,13 @@
 Python version with visual monitoring and smart compression
 """
 
-import os
-import sys
 from pathlib import Path
 from typing import List, Dict
 
 from rich.console import Console
-from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, DownloadColumn
-from rich.prompt import Confirm
-from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn
 
 import ffmpeg
-import questionary
 from pydub import AudioSegment
 
 # Initialize Rich console
