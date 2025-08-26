@@ -6,27 +6,19 @@ Python version with visual monitoring and smart compression
 
 import os
 import sys
-import time
-import math
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict
 
 import click
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, DownloadColumn
-from rich.prompt import Confirm, Prompt
+from rich.prompt import Confirm
 from rich.panel import Panel
-from rich.text import Text
-from rich.live import Live
-from rich.layout import Layout
-from rich.columns import Columns
-from rich.align import Align
 
 import ffmpeg
 import questionary
 from pydub import AudioSegment
-from tqdm import tqdm
 
 # Initialize Rich console
 console = Console()
@@ -85,13 +77,14 @@ class AudioConverter:
             }
 
     def calculate_optimal_bitrate(self, duration_seconds: float) -> int:
-        """Calculate optimal bitrate for 16MB target"""
-        target_bytes = self.max_size_bytes
+        """Calculate optimal bitrate for ~12.8MB target (conservative compression)"""
+        # Reduce target by ~20% to account for MP3 encoding overhead
+        target_bytes = int(self.max_size_bytes * 0.8)  # 12.8MB instead of 16MB
         bitrate_bps = (target_bytes * 8) / duration_seconds
         bitrate_kbps = int(bitrate_bps / 1000)
 
-        # Constrain to reasonable range
-        return max(64, min(320, bitrate_kbps))
+        # Constrain to reasonable range (lower minimum for better compression)
+        return max(48, min(256, bitrate_kbps))
 
     def create_file_table(self, files: List[Path]) -> Table:
         """Create a beautiful table of available files"""
@@ -201,7 +194,7 @@ class AudioConverter:
         console.print(f"📊 Files Selected: [yellow]{len(files)}[/yellow]")
         console.print(f"📏 Total Input Size: [red]{total_size_mb:.1f}MB[/red]")
         console.print(f"🎯 Estimated Output: [green]{estimated_total_mb:.1f}MB[/green]")
-        console.print(f"🗜️  Target Size Limit: [blue]{self.max_size_mb}MB per file[/blue]")
+        console.print(f"🗜️  Target Size Limit: [blue]~{int(self.max_size_mb * 0.8)}MB per file (conservative)[/blue]")
 
         return Confirm.ask("\n[bold]Start conversion?[/bold]", default=True)
 
@@ -221,12 +214,12 @@ class AudioConverter:
             # Load audio
             audio = AudioSegment.from_file(str(input_path), format="m4a")
 
-            # Export with compression
+            # Export with compression (optimized for size)
             audio.export(
                 str(output_path),
                 format="mp3",
                 bitrate=f"{bitrate}k",
-                parameters=["-q:a", "2"]  # High quality VBR
+                parameters=["-q:a", "4"]  # Good quality VBR with better compression
             )
 
             # Check output size
@@ -289,8 +282,8 @@ class AudioConverter:
 
                 if result['success']:
                     output_size_mb = result['output_size'] / (1024 * 1024)
-                    status = "✅ OK" if result['output_size'] <= self.max_size_bytes else "⚠️  OVER LIMIT"
-                    status_color = "green" if result['output_size'] <= self.max_size_bytes else "red"
+                    status = "✅ OK" if result['output_size'] <= int(self.max_size_bytes * 0.8) else "⚠️  OVER LIMIT"
+                    status_color = "green" if result['output_size'] <= int(self.max_size_bytes * 0.8) else "red"
 
                     console.print(f"[green]✓[/green] {filename}: [blue]{output_size_mb:.1f}MB[/blue] [{status_color}]{status}[/{status_color}]")
 
@@ -301,7 +294,7 @@ class AudioConverter:
                         'duration': result['duration'],
                         'bitrate': result['bitrate'],
                         'compression_ratio': result['compression_ratio'],
-                        'status': 'OK' if result['output_size'] <= self.max_size_bytes else 'OVER_LIMIT'
+                        'status': 'OK' if result['output_size'] <= int(self.max_size_bytes * 0.8) else 'OVER_LIMIT'
                     })
                 else:
                     console.print(f"[red]✗[/red] {filename}: [red]{result['error']}[/red]")
@@ -467,7 +460,7 @@ def single(input_file, output_file, input_dir, output_dir):
 
     if result['success']:
         output_size_mb = result['output_size'] / (1024 * 1024)
-        status = "✅ OK" if result['output_size'] <= converter.max_size_bytes else "⚠️  OVER LIMIT"
+        status = "✅ OK" if result['output_size'] <= int(converter.max_size_bytes * 0.8) else "⚠️  OVER LIMIT"
 
         console.print(f"[green]✓[/green] Conversion complete!")
         console.print(f"📁 Output: [cyan]{output_path.name}[/cyan]")

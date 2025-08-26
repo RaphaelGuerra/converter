@@ -7,16 +7,15 @@ output/
 input/
 *.m4a
 
-# Test files
-test-files/
-
-# Node modules
-node_modules/
-
 # OS files
 .DS_Store
 Thumbs.db
 
 # Logs
 *.log
-npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python

@@ -1,49 +1,29 @@
 # 🎵 M4A to MP3 Converter v3.0
 
-Convert M4A video files to compressed MP3 audio files under 16MB with **two powerful implementations** featuring interactive CLIs with visual progress monitoring and smart file selection.
+Convert M4A audio files to compressed MP3 files under 16MB with an interactive CLI featuring visual progress monitoring and smart compression algorithms.
 
-## 🚀 Choose Your Version
+## ✨ Key Features
 
-### Python Edition (Recommended) ⭐
-- **🎨 Beautiful CLI**: Rich library provides stunning terminal interfaces
-- **🔊 Audio Processing**: Pydub and Librosa offer mature audio processing
-- **📊 Rich Progress**: Advanced progress bars with time estimates
-- **🎯 Smart Compression**: Intelligent bitrate calculation
+- **🎨 Beautiful CLI**: Rich library provides stunning terminal interfaces with tables and progress bars
+- **🔊 Superior Audio Processing**: Pydub and Librosa for mature audio processing
+- **📊 Real-time Progress**: Advanced progress bars with time estimates
+- **🎯 Smart Compression**: Intelligent bitrate calculation for optimal file sizes
+- **📋 Interactive Selection**: Choose specific files or convert all files
+- **📈 Detailed Statistics**: Comprehensive conversion summaries
 
-### Node.js Edition
-- **⚡ Fast Setup**: Quick installation with npm
-- **🎮 Interactive**: Full CLI with file selection and progress bars
-- **📦 Self-contained**: All dependencies bundled
-- **🔧 Mature**: Well-established ecosystem
-
-## 🎯 Quick Start - Python Edition
+## 🚀 Quick Start
 
 ```bash
-# 1. Install FFmpeg
+# 1. Install FFmpeg (required)
 brew install ffmpeg  # macOS
 # OR
-sudo apt install ffmpeg  # Ubuntu
+sudo apt install ffmpeg  # Ubuntu/Debian
 
 # 2. Setup Python environment
 python setup.py
 
 # 3. Convert your files
 python convert.py convert
-
-# 4. Follow the interactive menus!
-```
-
-## 🎯 Quick Start - Node.js Edition
-
-```bash
-# 1. Install FFmpeg
-brew install ffmpeg  # macOS
-
-# 2. Setup Node.js environment
-npm run setup
-
-# 3. Convert your files
-npm run convert
 
 # 4. Follow the interactive menus!
 ```
@@ -57,35 +37,44 @@ npm run convert
 - ⚡ **Smart Compression** - Automatic bitrate calculation
 - 📈 **Conversion Statistics** - Detailed summary reports
 
-## 🚀 Quick Start
+## 📖 Usage Guide
 
-### 1. Setup (One-time)
+### Directory Structure
 
-```bash
-# Install FFmpeg (required)
-brew install ffmpeg  # macOS
-# OR
-sudo apt install ffmpeg  # Ubuntu/Debian
-
-# Run setup
-npm run setup
+```
+converter/
+├── input/          # 📥 Place your .m4a files here
+├── output/         # 📤 Converted .mp3 files appear here
+├── convert.py      # ⚙️  Main converter application
+├── setup.py        # 🛠️  Setup and installation
+├── test_python.py  # 🧪 Test script
+└── requirements.txt # 📦 Python dependencies
 ```
 
-### 2. Add Your M4A Files
+### Available Commands
 
-```bash
-# Copy your .m4a files to the input directory
-cp /path/to/your/files/*.m4a ./input/
-```
+| Command | Description |
+|---------|-------------|
+| `python setup.py` | Initial setup and dependency installation |
+| `python convert.py convert` | **Interactive menu with visual progress** ⭐ |
+| `python convert.py batch` | Convert all files in input directory |
+| `python convert.py single file.m4a` | Convert single file |
+| `python test_python.py` | Test installation and dependencies |
 
-### 3. Convert!
+### Command Line Examples
 
 ```bash
 # Interactive menu (recommended)
-npm run convert
+python convert.py convert
 
-# OR command line
-npm run convert-cli
+# Convert all files in input directory
+python convert.py batch
+
+# Convert single file
+python convert.py single my-file.m4a
+
+# Show help
+python convert.py --help
 ```
 
 ## 🎯 Interactive Mode Features
@@ -107,57 +96,58 @@ npm run convert-cli
 - **Detailed Summary**: Comprehensive conversion statistics
 - **Error Handling**: Clear error messages and recovery suggestions
 
-## 📖 Usage Guide
-
-### Directory Structure
-
-```
-decoder/
-├── input/          # 📥 Place your .m4a files here
-├── output/         # 📤 Converted .mp3 files appear here
-├── menu.js         # 🎯 Interactive menu system
-├── convert.js      # ⚙️  Command-line converter
-└── setup.js        # 🛠️  Setup and installation
-```
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `npm run setup` | Initial setup and dependency installation |
-| `npm run convert` | **Interactive menu with visual progress** |
-| `npm run convert-cli` | Command line interface |
-| `npm run convert-current` | Convert files from current directory |
-| `npm run convert-single your-file.m4a` | Convert single file |
-
-### Command Line Options
-
-```bash
-# Interactive menu (recommended)
-npm run convert
-
-# Convert specific directories
-node menu.js
-
-# Command line mode
-npm run convert-cli input-dir output-dir
-
-# Single file conversion
-npm run convert-single input.m4a output.mp3
-
-# Help
-node convert.js --help
-```
-
 ## 🎨 Interactive Menu Walkthrough
 
 ### 1. Welcome Screen
 ```
 ╔══════════════════════════════════════════════════════════════╗
-║                 🎵 M4A to MP3 Converter v2.0                 ║
-║                   with Interactive CLI                       ║
+║                 🎵 M4A to MP3 Converter v3.0                ║
+║                   Python Interactive CLI                     ║
 ╚══════════════════════════════════════════════════════════════╝
 ```
+
+### 2. File Selection Table
+```
+📋 Available M4A Files:
+
+┌─────┬────────────────┬─────────┬────────────┬──────────────┐
+│Index│Filename        │Size     │Duration    │Estimated MP3 │
+├─────┼────────────────┼─────────┼────────────┼──────────────┤
+│1    │sample1.m4a     │40.2MB   │5:30        │~12.8MB       │
+│2    │sample2.m4a     │35.8MB   │4:15        │~11.4MB       │
+└─────┴────────────────┴─────────┴────────────┴──────────────┘
+```
+
+### 3. Selection Options
+- ✅ **Convert ALL files** - Process everything
+- 📂 **Select specific files** - Choose individual files
+- ❌ **Cancel** - Exit the program
+
+### 4. Conversion Progress
+```
+🎵 Converting: sample1.m4a
+✅ Duration: 5:30
+🎯 Target bitrate: 85kbps
+📏 Target size: Under 16MB
+
+Converting sample1.m4a ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 87% 0:00:02
+Overall Progress       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1/2 0:00:05
+```
+
+### 5. Conversion Summary
+
+## 🔧 Technical Details
+
+### Smart Compression Algorithm
+
+The converter automatically calculates the optimal bitrate using:
+
+```
+bitrate = (target_bytes × 8) ÷ (duration_seconds × 1000)
+target_bytes = 12.8MB (conservative estimate accounting for MP3 overhead)
+```
+
+This ensures files stay under 16MB while maintaining good quality.
 
 ### 2. File Selection Table
 ```

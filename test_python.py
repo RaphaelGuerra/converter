@@ -16,10 +16,7 @@ def test_imports():
         'rich',
         'pydub',
         'ffmpeg',
-        'questionary',
-        'tqdm',
-        'librosa',
-        'soundfile'
+        'questionary'
     ]
 
     missing = []
