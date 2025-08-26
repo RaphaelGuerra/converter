@@ -118,7 +118,11 @@ class AudioConverter:
 
         # For multiple files, ask if user wants to select specific ones
         console.print(f"\n[dim]💡 Tip: Press Enter to convert all {len(files)} files, or 's' to select specific files[/dim]")
-        choice = input("Convert [A]ll files or [S]elect specific? [A/s]: ").strip().lower()
+        try:
+            choice = input("Convert [A]ll files or [S]elect specific? [A/s]: ").strip().lower()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]→ Cancelled by user[/yellow]")
+            return []
 
         if choice in ['s', 'select']:
             # Simple numbered selection
@@ -289,12 +293,88 @@ class AudioConverter:
         """Simple, straightforward conversion process"""
         self.show_welcome()
 
+        # Ask user what they want to do
+        console.print()
+        console.print("[bold]What would you like to do?[/bold]")
+        console.print("  1. [cyan]📁 Convert files from input/ directory[/cyan] (recommended)")
+        console.print("  2. [cyan]📄 Convert a single specific file[/cyan]")
+        console.print()
+
+        try:
+            choice = input("Enter your choice [1/2]: ").strip()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]👋 Goodbye![/yellow]")
+            return
+
+        if choice == "2":
+            # Single file conversion
+            self.convert_single_file()
+        else:
+            # Directory conversion (default)
+            self.convert_from_directory()
+
+    def convert_single_file(self):
+        """Convert a single specific file"""
+        console.print("\n[bold]📄 Single File Conversion[/bold]")
+        console.print("[dim]Enter the path to your M4A file:[/dim]")
+
+        try:
+            file_path = input("File path: ").strip()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]→ Cancelled[/yellow]")
+            return
+
+        if not file_path:
+            console.print("[yellow]No file specified.[/yellow]")
+            return
+
+        input_path = Path(file_path)
+        if not input_path.exists():
+            console.print(f"[red]❌ File not found: {file_path}[/red]")
+            return
+
+        if input_path.suffix.lower() != '.m4a':
+            console.print(f"[red]❌ Not an M4A file: {input_path.suffix}[/red]")
+            return
+
+        # Ask for output location
+        console.print("[dim]Enter output file path (or press Enter for default):[/dim]")
+        try:
+            output_path_input = input("Output path: ").strip()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]→ Cancelled[/yellow]")
+            return
+
+        if output_path_input:
+            output_path = Path(output_path_input)
+        else:
+            output_path = Path('output') / f"{input_path.stem}.mp3"
+
+        # Create output directory if needed
+        Path('output').mkdir(exist_ok=True)
+
+        console.print(f"\n[bold cyan]🎵 Converting:[/bold cyan] {input_path.name}")
+
+        result = self.convert_file(input_path, output_path)
+
+        if result['success']:
+            output_size_mb = result['output_size'] / (1024 * 1024)
+            status = "✅ OK" if result['output_size'] <= int(self.max_size_bytes * 0.8) else "⚠️  OVER LIMIT"
+
+            console.print(f"[green]✓[/green] Complete: [blue]{output_size_mb:.1f}MB[/blue] [{status}]")
+            console.print(f"📁 Saved to: [cyan]{output_path}[/cyan]")
+        else:
+            console.print(f"[red]❌ Failed: {result['error']}[/red]")
+
+    def convert_from_directory(self):
+        """Convert files from input directory"""
         # Find M4A files
         files = self.find_m4a_files()
 
         if len(files) == 0:
             console.print(f"[yellow]📁 No M4A files found in {self.input_dir}[/yellow]")
             console.print("[dim]Place your .m4a files in the input/ directory and try again.[/dim]")
+            console.print("[dim]Or choose option 2 to convert a specific file.[/dim]")
             return
 
         # Show files
@@ -316,71 +396,9 @@ class AudioConverter:
 
 
 def main():
-    """Simple command-line interface"""
-    import sys
-
-    if len(sys.argv) == 1:
-        # Interactive mode - default
-        converter = AudioConverter('input', 'output')
-        converter.run()
-        return
-
-    if sys.argv[1] in ['-h', '--help', 'help']:
-        show_help()
-        return
-
-    if sys.argv[1] == 'single':
-        # Single file conversion
-        if len(sys.argv) < 3:
-            console.print("[red]❌ Error: Please specify an input file[/red]")
-            console.print("[dim]Usage: python convert.py single <input.m4a> [output.mp3][/dim]")
-            return
-
-        input_file = sys.argv[2]
-        output_file = sys.argv[3] if len(sys.argv) > 3 else None
-
-        converter = AudioConverter('input', 'output')
-
-        input_path = Path(input_file)
-        if not output_file:
-            output_path = Path('output') / f"{input_path.stem}.mp3"
-        else:
-            output_path = Path(output_file)
-
-        Path('output').mkdir(exist_ok=True)
-
-        console.print(f"[bold cyan]🎵 Converting:[/bold cyan] {input_path.name}")
-
-        result = converter.convert_file(input_path, output_path)
-
-        if result['success']:
-            output_size_mb = result['output_size'] / (1024 * 1024)
-            status = "✅ OK" if result['output_size'] <= int(converter.max_size_bytes * 0.8) else "⚠️  OVER LIMIT"
-
-            console.print(f"[green]✓[/green] Complete: [blue]{output_size_mb:.1f}MB[/blue] [{status}]")
-            console.print(f"📁 Saved to: [cyan]{output_path.name}[/cyan]")
-        else:
-            console.print(f"[red]❌ Failed: {result['error']}[/red]")
-        return
-
-    # Unknown command
-    console.print(f"[red]❌ Unknown command: {sys.argv[1]}[/red]")
-    show_help()
-
-
-def show_help():
-    """Show help information"""
-    console.print("[bold blue]🎵 M4A to MP3 Converter v3.0[/bold blue]")
-    console.print()
-    console.print("[bold]Commands:[/bold]")
-    console.print("  python convert.py              # Interactive conversion (recommended)")
-    console.print("  python convert.py single <file.m4a> [output.mp3]  # Convert single file")
-    console.print("  python convert.py --help       # Show this help")
-    console.print()
-    console.print("[bold]Examples:[/bold]")
-    console.print("  python convert.py                           # Convert all files interactively")
-    console.print("  python convert.py single podcast.m4a       # Convert one file")
-    console.print("  python convert.py single file.m4a output.mp3  # Custom output name")
+    """Run the interactive M4A to MP3 converter"""
+    converter = AudioConverter('input', 'output')
+    converter.run()
 
 
 if __name__ == "__main__":
