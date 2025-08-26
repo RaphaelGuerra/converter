@@ -23,13 +23,43 @@ from pydub import AudioSegment
 console = Console()
 
 class AudioConverter:
-    """Main audio converter class with visual feedback"""
+    """Main audio converter class with visual feedback and quality options"""
 
-    def __init__(self, input_dir: str = "input", output_dir: str = "output"):
+    # Quality levels with compression factors
+    QUALITY_LEVELS = {
+        'small': {
+            'name': 'Small File (High Compression)',
+            'compression_factor': 0.7,  # 30% of original size target
+            'description': 'Maximum compression, smaller file size',
+            'use_case': 'Mobile, web, storage constrained',
+            'quality': 'Good',
+            'bitrate_range': '48-96 kbps'
+        },
+        'medium': {
+            'name': 'Medium File (Balanced)',
+            'compression_factor': 0.8,  # 20% of original size target
+            'description': 'Balanced size and quality',
+            'use_case': 'General use, podcasts, music',
+            'quality': 'Very Good',
+            'bitrate_range': '64-160 kbps'
+        },
+        'large': {
+            'name': 'Large File (High Quality)',
+            'compression_factor': 0.9,  # 10% of original size target
+            'description': 'High quality, larger file size',
+            'use_case': 'Archiving, high-fidelity audio',
+            'quality': 'Excellent',
+            'bitrate_range': '96-256 kbps'
+        }
+    }
+
+    def __init__(self, input_dir: str = "input", output_dir: str = "output", quality: str = "medium"):
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
+        self.quality = quality
         self.max_size_mb = 16
         self.max_size_bytes = self.max_size_mb * 1024 * 1024
+        self.compression_factor = self.QUALITY_LEVELS[quality]['compression_factor']
 
         # Ensure directories exist
         self.input_dir.mkdir(exist_ok=True)
@@ -70,14 +100,66 @@ class AudioConverter:
             }
 
     def calculate_optimal_bitrate(self, duration_seconds: float) -> int:
-        """Calculate optimal bitrate for ~12.8MB target (conservative compression)"""
-        # Reduce target by ~20% to account for MP3 encoding overhead
-        target_bytes = int(self.max_size_bytes * 0.8)  # 12.8MB instead of 16MB
+        """Calculate optimal bitrate based on selected quality level"""
+        # Apply compression factor to target size
+        target_bytes = int(self.max_size_bytes * self.compression_factor)
         bitrate_bps = (target_bytes * 8) / duration_seconds
         bitrate_kbps = int(bitrate_bps / 1000)
 
-        # Constrain to reasonable range (lower minimum for better compression)
-        return max(48, min(256, bitrate_kbps))
+        # Quality-specific bitrate ranges
+        quality_ranges = {
+            'small': (48, 96),
+            'medium': (64, 160),
+            'large': (96, 256)
+        }
+
+        min_bitrate, max_bitrate = quality_ranges[self.quality]
+        return max(min_bitrate, min(max_bitrate, bitrate_kbps))
+
+    def show_quality_info(self):
+        """Display information about all quality levels"""
+        console.print("\n[bold]🎵 Quality Levels & Compression Options:[/bold]")
+        console.print()
+
+        for key, level in self.QUALITY_LEVELS.items():
+            current = " ← [green]CURRENT[/green]" if key == self.quality else ""
+            console.print(f"[bold cyan]{key.upper()}: {level['name']}[/bold cyan]{current}")
+            console.print(f"  [yellow]📏 Target Size:[/yellow] ~{int(self.max_size_mb * level['compression_factor'])}MB ({int((1-level['compression_factor'])*100)}% compression)")
+            console.print(f"  [yellow]🎯 Quality:[/yellow] {level['quality']}")
+            console.print(f"  [yellow]🎵 Bitrate:[/yellow] {level['bitrate_range']}")
+            console.print(f"  [yellow]📱 Use Case:[/yellow] {level['use_case']}")
+            console.print(f"  [yellow]📝 Note:[/yellow] {level['description']}")
+            console.print()
+
+    def select_quality(self) -> str:
+        """Let user select compression quality level"""
+        console.print("\n[bold]🎯 Select Compression Quality:[/bold]")
+        console.print("  [S] Small File (High Compression) - ~11MB, Good quality")
+        console.print("  [M] Medium File (Balanced) - ~13MB, Very Good quality")
+        console.print("  [L] Large File (High Quality) - ~14MB, Excellent quality")
+        console.print()
+
+        try:
+            choice = input("Choose quality [S/M/L] or press Enter for Medium: ").strip().lower()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]→ Using Medium quality (default)[/yellow]")
+            return "medium"
+
+        if choice in ['s', 'small']:
+            return "small"
+        elif choice in ['l', 'large']:
+            return "large"
+        else:
+            return "medium"  # Default
+
+    def update_quality(self, quality: str):
+        """Update converter quality settings"""
+        if quality in self.QUALITY_LEVELS:
+            self.quality = quality
+            self.compression_factor = self.QUALITY_LEVELS[quality]['compression_factor']
+            console.print(f"[green]→ Quality set to: {self.QUALITY_LEVELS[quality]['name']}[/green]")
+        else:
+            console.print("[red]❌ Invalid quality level[/red]")
 
     def show_files(self, files: List[Path]) -> None:
         """Show files in a clean, simple list"""
@@ -96,9 +178,12 @@ class AudioConverter:
             else:
                 duration_str = "Unknown"
 
-            # Estimate MP3 size
+            # Estimate MP3 size based on selected quality
             if info['duration'] > 0:
-                estimated_mp3_mb = min(size_mb * 0.3, 12.8)
+                bitrate = self.calculate_optimal_bitrate(info['duration'])
+                estimated_seconds = info['duration']
+                estimated_bytes = (bitrate * 1000 * estimated_seconds) / 8
+                estimated_mp3_mb = estimated_bytes / (1024 * 1024)
                 estimated_str = f"~{estimated_mp3_mb:.1f}MB"
             else:
                 estimated_str = "Unknown"
@@ -198,12 +283,21 @@ class AudioConverter:
         total_size = sum(self.get_audio_info(f)['size'] for f in files)
         total_size_mb = total_size / (1024 * 1024)
 
-        estimated_total = sum(min(self.get_audio_info(f)['size'] * 0.3, 12.8 * 1024 * 1024) for f in files)
+        # Calculate estimated output based on selected quality
+        estimated_total = 0
+        for f in files:
+            info = self.get_audio_info(f)
+            if info['duration'] > 0:
+                bitrate = self.calculate_optimal_bitrate(info['duration'])
+                estimated_bytes = (bitrate * 1000 * info['duration']) / 8
+                estimated_total += estimated_bytes
+
         estimated_total_mb = estimated_total / (1024 * 1024)
 
         console.print(f"\n[bold]🚀 Starting conversion of {len(files)} file(s):[/bold]")
         console.print(f"📏 Total input: [red]{total_size_mb:.1f}MB[/red]")
         console.print(f"🎯 Estimated output: [green]{estimated_total_mb:.1f}MB[/green]")
+        console.print(f"🎵 Quality Level: [cyan]{self.QUALITY_LEVELS[self.quality]['name']}[/cyan]")
         console.print(f"📁 Output directory: [cyan]{self.output_dir}[/cyan]")
         console.print()
 
@@ -223,12 +317,18 @@ class AudioConverter:
             # Load audio
             audio = AudioSegment.from_file(str(input_path), format="m4a")
 
-            # Export with compression (optimized for size)
+            # Export with compression based on quality level
+            vbr_quality = {
+                'small': "6",   # Lower quality, higher compression
+                'medium': "4",  # Good balance
+                'large': "2"    # Higher quality, less compression
+            }
+
             audio.export(
                 str(output_path),
                 format="mp3",
                 bitrate=f"{bitrate}k",
-                parameters=["-q:a", "4"]  # Good quality VBR with better compression
+                parameters=["-q:a", vbr_quality[self.quality]]
             )
 
             # Check output size
@@ -276,7 +376,7 @@ class AudioConverter:
 
                 if result['success']:
                     output_size_mb = result['output_size'] / (1024 * 1024)
-                    status = "OK" if result['output_size'] <= int(self.max_size_bytes * 0.8) else "OVER_LIMIT"
+                    status = "OK" if result['output_size'] <= int(self.max_size_bytes * self.compression_factor) else "OVER_LIMIT"
 
                     results.append({
                         'filename': filename,
@@ -329,18 +429,28 @@ class AudioConverter:
                 console.print(f"  [red]✗ {result['filename']}: {result['error']}[/red]")
 
     def run(self):
-        """Simple, automatic conversion process"""
+        """Complete conversion process with quality selection"""
         self.show_welcome()
+
+        # Step 1: Quality Selection
+        console.print("\n[dim]First, let's choose your compression quality:[/dim]")
+        selected_quality = self.select_quality()
+        self.update_quality(selected_quality)
+
+        # Optional: Show detailed quality info
+        show_info = input("Show detailed quality information? [y/N]: ").strip().lower()
+        if show_info == 'y':
+            self.show_quality_info()
 
         # Find M4A files in input directory
         files = self.find_m4a_files()
 
         if len(files) == 0:
             console.print(f"[yellow]📁 No M4A files found in {self.input_dir}[/yellow]")
-            console.print("[dim]Place your .m4a files in the input/ directory and run again.[/dim]")
+            console.print("[dim]Place your .m4a files in the input/ directory and try again.[/dim]")
             return
 
-        # Show files
+        # Show files with updated size estimates
         self.show_files(files)
 
         # Select files (simple process)
