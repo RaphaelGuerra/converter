@@ -1,0 +1,28 @@
+{
+  "name": "video-converter",
+  "version": "2.0.0",
+  "description": "Convert M4A videos to compressed MP3 files under 16MB with interactive CLI",
+  "main": "convert.js",
+  "scripts": {
+    "setup": "node setup.js",
+    "convert": "node menu.js",
+    "convert-cli": "node convert.js",
+    "convert-single": "node convert.js --single",
+    "convert-current": "node convert.js . output",
+    "test-convert": "node convert.js test-files output"
+  },
+  "dependencies": {
+    "fluent-ffmpeg": "^2.1.2",
+    "fs-extra": "^11.1.1",
+    "path": "^0.12.7",
+    "inquirer": "^9.2.12",
+    "cli-progress": "^3.12.0",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.3",
+    "ora": "^7.0.1",
+    "cli-cursor": "^4.0.0"
+  },
+  "keywords": ["video", "audio", "conversion", "mp3", "m4a", "cli", "interactive"],
+  "author": "",
+  "license": "MIT"
+}
