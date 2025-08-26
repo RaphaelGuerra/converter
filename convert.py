@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import List, Dict
 
-import click
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, DownloadColumn
@@ -37,15 +36,9 @@ class AudioConverter:
         self.output_dir.mkdir(exist_ok=True)
 
     def show_welcome(self):
-        """Display welcome banner"""
-        welcome = Panel.fit(
-            "[bold blue]🎵 M4A to MP3 Converter[/bold blue]\n"
-            "[dim]Python version with Interactive CLI[/dim]\n"
-            "[green]Smart compression under 16MB[/green]",
-            title="🎯 Audio Converter v3.0",
-            border_style="blue"
-        )
-        console.print(welcome)
+        """Display simple welcome banner"""
+        console.print("[bold blue]🎵 M4A to MP3 Converter[/bold blue] [dim]v3.0[/dim]")
+        console.print("[green]Smart compression under 16MB[/green]")
         console.print()
 
     def find_m4a_files(self) -> List[Path]:
@@ -86,14 +79,10 @@ class AudioConverter:
         # Constrain to reasonable range (lower minimum for better compression)
         return max(48, min(256, bitrate_kbps))
 
-    def create_file_table(self, files: List[Path]) -> Table:
-        """Create a beautiful table of available files"""
-        table = Table(title="📋 Available M4A Files", show_header=True, header_style="bold cyan")
-        table.add_column("Index", style="yellow", justify="right")
-        table.add_column("Filename", style="white", no_wrap=True)
-        table.add_column("Size", style="red", justify="right")
-        table.add_column("Duration", style="blue", justify="right")
-        table.add_column("Est. MP3", style="green", justify="right")
+    def show_files(self, files: List[Path]) -> None:
+        """Show files in a clean, simple list"""
+        console.print(f"[bold]📁 Found {len(files)} M4A file(s):[/bold]")
+        console.print()
 
         for i, file_path in enumerate(files, 1):
             info = self.get_audio_info(file_path)
@@ -109,94 +98,71 @@ class AudioConverter:
 
             # Estimate MP3 size
             if info['duration'] > 0:
-                bitrate = self.calculate_optimal_bitrate(info['duration'])
-                estimated_mp3_mb = min(size_mb * 0.3, 15.0)
+                estimated_mp3_mb = min(size_mb * 0.3, 12.8)
                 estimated_str = f"~{estimated_mp3_mb:.1f}MB"
             else:
                 estimated_str = "Unknown"
 
-            table.add_row(
-                str(i),
-                file_path.name,
-                f"{size_mb:.1f}MB",
-                duration_str,
-                estimated_str
-            )
-
-        return table
+            console.print(f"  {i}. [cyan]{file_path.name}[/cyan]")
+            console.print(f"     [red]{size_mb:.1f}MB[/red] → [green]{estimated_str}[/green] | Duration: [blue]{duration_str}[/blue]")
+            console.print()
 
     def select_files(self, files: List[Path]) -> List[Path]:
-        """Interactive file selection"""
+        """Simple file selection - convert all by default"""
         if len(files) == 0:
             return []
 
-        console.print("\n[bold]File Selection Options:[/bold]")
-
-        choices = [
-            {"name": "✅ Convert ALL files", "value": "all"},
-            {"name": "📂 Select specific files", "value": "select"},
-            {"name": "❌ Cancel", "value": "cancel"}
-        ]
-
-        choice = questionary.select(
-            "What would you like to do?",
-            choices=[c["name"] for c in choices],
-            default="✅ Convert ALL files"
-        ).ask()
-
-        if choice == "❌ Cancel" or choice is None:
-            return []
-
-        if choice == "✅ Convert ALL files":
+        if len(files) == 1:
+            console.print("[green]→ Converting the file automatically[/green]")
             return files
 
-        # Multi-select specific files
-        file_choices = []
-        for i, file_path in enumerate(files, 1):
-            info = self.get_audio_info(file_path)
-            size_mb = info['size'] / (1024 * 1024)
-            file_choices.append({
-                "name": f"{i}. {file_path.name} ({size_mb:.1f}MB → ~{min(size_mb * 0.3, 15.0):.1f}MB)",
-                "value": file_path
-            })
+        # For multiple files, ask if user wants to select specific ones
+        console.print(f"\n[dim]💡 Tip: Press Enter to convert all {len(files)} files, or 's' to select specific files[/dim]")
+        choice = input("Convert [A]ll files or [S]elect specific? [A/s]: ").strip().lower()
 
-        selected = questionary.checkbox(
-            "Select files to convert:",
-            choices=[c["name"] for c in file_choices]
-        ).ask()
+        if choice in ['s', 'select']:
+            # Simple numbered selection
+            console.print("\n[dim]Enter file numbers separated by commas (e.g., 1,3,5):[/dim]")
+            try:
+                selection = input("Files to convert: ").strip()
+                if not selection:
+                    return files
 
-        if not selected:
-            return []
+                indices = [int(x.strip()) - 1 for x in selection.split(',')]
+                selected_files = []
+                for idx in indices:
+                    if 0 <= idx < len(files):
+                        selected_files.append(files[idx])
 
-        # Map back to file paths
-        selected_files = []
-        for choice_name in selected:
-            for choice in file_choices:
-                if choice["name"] == choice_name:
-                    selected_files.append(choice["value"])
-                    break
+                if selected_files:
+                    console.print(f"[green]→ Selected {len(selected_files)} file(s)[/green]")
+                    return selected_files
+                else:
+                    console.print("[yellow]→ No valid files selected, converting all[/yellow]")
+                    return files
+            except (ValueError, KeyboardInterrupt):
+                console.print("[yellow]→ Invalid selection, converting all files[/yellow]")
+                return files
+        else:
+            console.print("[green]→ Converting all files[/green]")
+            return files
 
-        return selected_files
-
-    def show_conversion_settings(self, files: List[Path]) -> bool:
-        """Show conversion settings and confirm"""
+    def show_conversion_settings(self, files: List[Path]) -> None:
+        """Show conversion settings (no confirmation needed)"""
         if len(files) == 0:
-            return False
+            return
 
         total_size = sum(self.get_audio_info(f)['size'] for f in files)
         total_size_mb = total_size / (1024 * 1024)
 
-        estimated_total = sum(min(self.get_audio_info(f)['size'] * 0.3, 15 * 1024 * 1024) for f in files)
+        estimated_total = sum(min(self.get_audio_info(f)['size'] * 0.3, 12.8 * 1024 * 1024) for f in files)
         estimated_total_mb = estimated_total / (1024 * 1024)
 
-        console.print("\n[bold]⚙️  Conversion Settings:[/bold]")
-        console.print(f"📁 Output Directory: [cyan]{self.output_dir}[/cyan]")
-        console.print(f"📊 Files Selected: [yellow]{len(files)}[/yellow]")
-        console.print(f"📏 Total Input Size: [red]{total_size_mb:.1f}MB[/red]")
-        console.print(f"🎯 Estimated Output: [green]{estimated_total_mb:.1f}MB[/green]")
-        console.print(f"🗜️  Target Size Limit: [blue]~{int(self.max_size_mb * 0.8)}MB per file (conservative)[/blue]")
-
-        return Confirm.ask("\n[bold]Start conversion?[/bold]", default=True)
+        console.print(f"\n[bold]🚀 Starting conversion of {len(files)} file(s):[/bold]")
+        console.print(f"📏 Total input: [red]{total_size_mb:.1f}MB[/red]")
+        console.print(f"🎯 Estimated output: [green]{estimated_total_mb:.1f}MB[/green]")
+        console.print(f"📁 Output directory: [cyan]{self.output_dir}[/cyan]")
+        console.print()
 
     def convert_file(self, input_path: Path, output_path: Path, progress_callback=None) -> Dict:
         """Convert single file with progress tracking"""
@@ -239,53 +205,35 @@ class AudioConverter:
             return {'success': False, 'error': str(e)}
 
     def convert_files(self, files: List[Path]) -> List[Dict]:
-        """Convert all selected files with visual progress"""
+        """Convert all selected files with clean progress monitoring"""
         results = []
 
+        # Show simple progress bar for overall conversion
         with Progress(
             SpinnerColumn(),
             TextColumn("[bold blue]{task.description}"),
-            BarColumn(),
-            DownloadColumn(),
+            BarColumn(complete_style="green", finished_style="green"),
+            TextColumn("[bold yellow]{task.completed}/{task.total} files"),
             TimeRemainingColumn(),
-            TextColumn("[bold green]{task.fields[filename] if 'filename' in task.fields else ''}"),
             console=console,
-            refresh_per_second=10
+            refresh_per_second=4
         ) as progress:
 
-            overall_task = progress.add_task("Overall Progress", total=len(files))
+            overall_task = progress.add_task("Converting files", total=len(files))
 
             for file_path in files:
                 filename = file_path.name
                 output_path = self.output_dir / f"{file_path.stem}.mp3"
 
-                # File-specific progress
-                file_task = progress.add_task(
-                    f"Converting {filename}",
-                    total=100,
-                    filename=filename
-                )
+                # Update progress description with current file
+                progress.update(overall_task, description=f"Converting: {filename}")
 
-                console.print(f"\n[bold cyan]🎵 Converting:[/bold cyan] {filename}")
-
-                # Show file info
-                info = self.get_audio_info(file_path)
-                duration_str = f"{int(info['duration'] // 60)}:{int(info['duration'] % 60):02d}" if info['duration'] > 0 else "Unknown"
-                bitrate = self.calculate_optimal_bitrate(info['duration']) if info['duration'] > 0 else 128
-
-                console.print(f"✅ Duration: [blue]{duration_str}[/blue]")
-                console.print(f"🎯 Target bitrate: [green]{bitrate}kbps[/green]")
-                console.print(f"📏 Target size: [blue]Under {self.max_size_mb}MB[/blue]")
-
-                # Convert file
+                # Convert file (without verbose output)
                 result = self.convert_file(file_path, output_path)
 
                 if result['success']:
                     output_size_mb = result['output_size'] / (1024 * 1024)
-                    status = "✅ OK" if result['output_size'] <= int(self.max_size_bytes * 0.8) else "⚠️  OVER LIMIT"
-                    status_color = "green" if result['output_size'] <= int(self.max_size_bytes * 0.8) else "red"
-
-                    console.print(f"[green]✓[/green] {filename}: [blue]{output_size_mb:.1f}MB[/blue] [{status_color}]{status}[/{status_color}]")
+                    status = "OK" if result['output_size'] <= int(self.max_size_bytes * 0.8) else "OVER_LIMIT"
 
                     results.append({
                         'filename': filename,
@@ -294,10 +242,9 @@ class AudioConverter:
                         'duration': result['duration'],
                         'bitrate': result['bitrate'],
                         'compression_ratio': result['compression_ratio'],
-                        'status': 'OK' if result['output_size'] <= int(self.max_size_bytes * 0.8) else 'OVER_LIMIT'
+                        'status': status
                     })
                 else:
-                    console.print(f"[red]✗[/red] {filename}: [red]{result['error']}[/red]")
                     results.append({
                         'filename': filename,
                         'error': result['error'],
@@ -305,186 +252,136 @@ class AudioConverter:
                     })
 
                 # Update progress
-                progress.update(file_task, completed=100)
                 progress.update(overall_task, advance=1)
-                progress.remove_task(file_task)
 
         return results
 
     def show_summary(self, results: List[Dict]):
-        """Show comprehensive conversion summary"""
+        """Show clean conversion summary"""
         successful = [r for r in results if 'error' not in r]
         failed = [r for r in results if 'error' in r]
 
-        console.print(f"\n[bold blue]{'='*60}[/bold blue]")
-        console.print("[bold green]🎉 CONVERSION SUMMARY[/bold green]")
-        console.print(f"[bold blue]{'='*60}[/bold blue]")
+        console.print(f"\n[bold green]🎉 Conversion Complete![/bold green]")
 
         if successful:
-            console.print(f"[green]✅ Successfully converted: {len(successful)} file(s)[/green]")
-
-            # Create results table
-            table = Table(show_header=True, header_style="bold cyan")
-            table.add_column("File", style="white", no_wrap=True)
-            table.add_column("Original", style="red", justify="right")
-            table.add_column("Converted", style="blue", justify="right")
-            table.add_column("Compression", style="yellow", justify="right")
-            table.add_column("Status", style="green", justify="center")
-
-            total_original = 0
-            total_converted = 0
-
-            for result in successful:
-                original_mb = result['input_size'] / (1024 * 1024)
-                converted_mb = result['output_size'] / (1024 * 1024)
-                compression = result['compression_ratio']
-                status = "✅ OK" if result['status'] == 'OK' else "⚠️  OVER"
-
-                table.add_row(
-                    result['filename'],
-                    f"{original_mb:.1f}MB",
-                    f"{converted_mb:.1f}MB",
-                    f"{compression:.1f}%",
-                    status
-                )
-
-                total_original += result['input_size']
-                total_converted += result['output_size']
-
-            console.print(table)
-
-            # Overall statistics
+            total_original = sum(r['input_size'] for r in successful)
+            total_converted = sum(r['output_size'] for r in successful)
             total_original_mb = total_original / (1024 * 1024)
             total_converted_mb = total_converted / (1024 * 1024)
             total_compression = (1 - total_converted / total_original) * 100 if total_original > 0 else 0
 
-            console.print(f"\n[bold]📈 OVERALL STATISTICS:[/bold]")
-            console.print(f"📊 Total Files: [yellow]{len(successful)}[/yellow]")
-            console.print(f"📏 Original Size: [red]{total_original_mb:.1f}MB[/red]")
-            console.print(f"📏 Converted Size: [blue]{total_converted_mb:.1f}MB[/blue]")
-            console.print(f"🗜️  Total Compression: [green]{total_compression:.1f}%[/green]")
+            console.print(f"[green]✅ Successfully converted: {len(successful)} file(s)[/green]")
+            console.print(f"📊 Total saved: [green]{total_compression:.1f}%[/green] ([red]{total_original_mb:.1f}MB[/red] → [blue]{total_converted_mb:.1f}MB[/blue])")
+
+            # Show individual results for failed files only
+            if len(successful) <= 5:
+                for result in successful:
+                    converted_mb = result['output_size'] / (1024 * 1024)
+                    status = "✅" if result['status'] == 'OK' else "⚠️"
+                    console.print(f"  {status} {result['filename']}: [blue]{converted_mb:.1f}MB[/blue]")
 
         if failed:
-            console.print(f"[red]❌ Failed conversions: {len(failed)} file(s)[/red]")
+            console.print(f"\n[red]❌ Failed conversions: {len(failed)} file(s)[/red]")
             for result in failed:
-                console.print(f"  [red]• {result['filename']}: {result['error']}[/red]")
+                console.print(f"  [red]✗ {result['filename']}: {result['error']}[/red]")
 
     def run(self):
-        """Main interactive loop"""
-        while True:
-            self.show_welcome()
+        """Simple, straightforward conversion process"""
+        self.show_welcome()
 
-            # Find M4A files
-            files = self.find_m4a_files()
+        # Find M4A files
+        files = self.find_m4a_files()
 
-            if len(files) == 0:
-                console.print(f"[yellow]📁 No M4A files found in {self.input_dir}[/yellow]")
-                console.print("[dim]Place your .m4a files in the input/ directory and run this command again.[/dim]")
-                console.print("[dim]Press Ctrl+C to exit\n[/dim]")
+        if len(files) == 0:
+            console.print(f"[yellow]📁 No M4A files found in {self.input_dir}[/yellow]")
+            console.print("[dim]Place your .m4a files in the input/ directory and try again.[/dim]")
+            return
 
-                try:
-                    if not Confirm.ask("[bold]🔄 Check again for files?[/bold]", default=True):
-                        break
-                    continue
-                except KeyboardInterrupt:
-                    break
-            else:
-                # Show file table
-                table = self.create_file_table(files)
-                console.print(table)
+        # Show files
+        self.show_files(files)
 
-                # Select files
-                selected_files = self.select_files(files)
+        # Select files (simple process)
+        selected_files = self.select_files(files)
 
-                if len(selected_files) == 0:
-                    console.print("[yellow]👋 No files selected. Goodbye![/yellow]")
-                    break
+        if len(selected_files) == 0:
+            console.print("[yellow]No files to convert.[/yellow]")
+            return
 
-                # Confirm settings
-                if not self.show_conversion_settings(selected_files):
-                    console.print("[yellow]👋 Conversion cancelled. Goodbye![/yellow]")
-                    break
+        # Show settings and convert
+        self.show_conversion_settings(selected_files)
+        results = self.convert_files(selected_files)
+        self.show_summary(results)
 
-                # Convert files
-                results = self.convert_files(selected_files)
-
-                # Show summary
-                self.show_summary(results)
-
-                # Continue?
-                try:
-                    if not Confirm.ask("\n[bold]🔄 Convert more files?[/bold]", default=False):
-                        break
-                except KeyboardInterrupt:
-                    break
-
-        console.print("\n[bold green]🎵 Thank you for using M4A to MP3 Converter![/bold green]")
+        console.print("\n[bold green]🎵 Conversion finished![/bold green]")
 
 
-@click.group()
-@click.version_option("3.0.0")
-def cli():
-    """🎵 M4A to MP3 Converter with Interactive CLI"""
-    pass
+def main():
+    """Simple command-line interface"""
+    import sys
 
-
-@cli.command()
-@click.option('--input-dir', '-i', default='input', help='Input directory containing M4A files')
-@click.option('--output-dir', '-o', default='output', help='Output directory for MP3 files')
-def convert(input_dir, output_dir):
-    """Interactive file selection and conversion"""
-    converter = AudioConverter(input_dir, output_dir)
-    converter.run()
-
-
-@cli.command()
-@click.argument('input_file', type=click.Path(exists=True))
-@click.argument('output_file', required=False)
-@click.option('--input-dir', '-i', default='input', help='Input directory')
-@click.option('--output-dir', '-o', default='output', help='Output directory')
-def single(input_file, output_file, input_dir, output_dir):
-    """Convert a single M4A file"""
-    converter = AudioConverter(input_dir, output_dir)
-
-    input_path = Path(input_file)
-    if not output_file:
-        output_path = Path(output_dir) / f"{input_path.stem}.mp3"
-    else:
-        output_path = Path(output_file)
-
-    Path(output_dir).mkdir(exist_ok=True)
-
-    console.print(f"[bold cyan]🎵 Converting single file:[/bold cyan] {input_path.name}")
-
-    result = converter.convert_file(input_path, output_path)
-
-    if result['success']:
-        output_size_mb = result['output_size'] / (1024 * 1024)
-        status = "✅ OK" if result['output_size'] <= int(converter.max_size_bytes * 0.8) else "⚠️  OVER LIMIT"
-
-        console.print(f"[green]✓[/green] Conversion complete!")
-        console.print(f"📁 Output: [cyan]{output_path.name}[/cyan]")
-        console.print(f"📏 Final size: [blue]{output_size_mb:.1f}MB[/blue] [{status}]")
-    else:
-        console.print(f"[red]❌ Conversion failed: {result['error']}[/red]")
-
-
-@cli.command()
-@click.option('--input-dir', '-i', default='input', help='Input directory')
-@click.option('--output-dir', '-o', default='output', help='Output directory')
-def batch(input_dir, output_dir):
-    """Convert all M4A files in input directory"""
-    converter = AudioConverter(input_dir, output_dir)
-
-    files = converter.find_m4a_files()
-    if len(files) == 0:
-        console.print(f"[yellow]📁 No M4A files found in {input_dir}[/yellow]")
+    if len(sys.argv) == 1:
+        # Interactive mode - default
+        converter = AudioConverter('input', 'output')
+        converter.run()
         return
 
-    console.print(f"[bold cyan]🎵 Converting all files from {input_dir}[/bold cyan]")
-    results = converter.convert_files(files)
-    converter.show_summary(results)
+    if sys.argv[1] in ['-h', '--help', 'help']:
+        show_help()
+        return
+
+    if sys.argv[1] == 'single':
+        # Single file conversion
+        if len(sys.argv) < 3:
+            console.print("[red]❌ Error: Please specify an input file[/red]")
+            console.print("[dim]Usage: python convert.py single <input.m4a> [output.mp3][/dim]")
+            return
+
+        input_file = sys.argv[2]
+        output_file = sys.argv[3] if len(sys.argv) > 3 else None
+
+        converter = AudioConverter('input', 'output')
+
+        input_path = Path(input_file)
+        if not output_file:
+            output_path = Path('output') / f"{input_path.stem}.mp3"
+        else:
+            output_path = Path(output_file)
+
+        Path('output').mkdir(exist_ok=True)
+
+        console.print(f"[bold cyan]🎵 Converting:[/bold cyan] {input_path.name}")
+
+        result = converter.convert_file(input_path, output_path)
+
+        if result['success']:
+            output_size_mb = result['output_size'] / (1024 * 1024)
+            status = "✅ OK" if result['output_size'] <= int(converter.max_size_bytes * 0.8) else "⚠️  OVER LIMIT"
+
+            console.print(f"[green]✓[/green] Complete: [blue]{output_size_mb:.1f}MB[/blue] [{status}]")
+            console.print(f"📁 Saved to: [cyan]{output_path.name}[/cyan]")
+        else:
+            console.print(f"[red]❌ Failed: {result['error']}[/red]")
+        return
+
+    # Unknown command
+    console.print(f"[red]❌ Unknown command: {sys.argv[1]}[/red]")
+    show_help()
+
+
+def show_help():
+    """Show help information"""
+    console.print("[bold blue]🎵 M4A to MP3 Converter v3.0[/bold blue]")
+    console.print()
+    console.print("[bold]Commands:[/bold]")
+    console.print("  python convert.py              # Interactive conversion (recommended)")
+    console.print("  python convert.py single <file.m4a> [output.mp3]  # Convert single file")
+    console.print("  python convert.py --help       # Show this help")
+    console.print()
+    console.print("[bold]Examples:[/bold]")
+    console.print("  python convert.py                           # Convert all files interactively")
+    console.print("  python convert.py single podcast.m4a       # Convert one file")
+    console.print("  python convert.py single file.m4a output.mp3  # Custom output name")
 
 
 if __name__ == "__main__":
-    cli()
+    main()
