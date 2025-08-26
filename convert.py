@@ -108,7 +108,7 @@ class AudioConverter:
             console.print()
 
     def select_files(self, files: List[Path]) -> List[Path]:
-        """Simple file selection - convert all by default"""
+        """Enhanced file selection with clear options"""
         if len(files) == 0:
             return []
 
@@ -116,39 +116,78 @@ class AudioConverter:
             console.print("[green]→ Converting the file automatically[/green]")
             return files
 
-        # For multiple files, ask if user wants to select specific ones
-        console.print(f"\n[dim]💡 Tip: Press Enter to convert all {len(files)} files, or 's' to select specific files[/dim]")
+        # Show selection options clearly
+        console.print(f"\n[bold]🎯 File Selection Options:[/bold]")
+        console.print("  [A] Convert ALL files")
+        console.print("  [S] Select specific files")
+        console.print()
+
         try:
-            choice = input("Convert [A]ll files or [S]elect specific? [A/s]: ").strip().lower()
+            choice = input("Choose [A]ll or [S]elect? [A/s]: ").strip().lower()
         except KeyboardInterrupt:
             console.print("\n[yellow]→ Cancelled by user[/yellow]")
             return []
 
         if choice in ['s', 'select']:
-            # Simple numbered selection
-            console.print("\n[dim]Enter file numbers separated by commas (e.g., 1,3,5):[/dim]")
-            try:
-                selection = input("Files to convert: ").strip()
-                if not selection:
-                    return files
-
-                indices = [int(x.strip()) - 1 for x in selection.split(',')]
-                selected_files = []
-                for idx in indices:
-                    if 0 <= idx < len(files):
-                        selected_files.append(files[idx])
-
-                if selected_files:
-                    console.print(f"[green]→ Selected {len(selected_files)} file(s)[/green]")
-                    return selected_files
-                else:
-                    console.print("[yellow]→ No valid files selected, converting all[/yellow]")
-                    return files
-            except (ValueError, KeyboardInterrupt):
-                console.print("[yellow]→ Invalid selection, converting all files[/yellow]")
-                return files
+            return self.select_specific_files(files)
         else:
-            console.print("[green]→ Converting all files[/green]")
+            console.print(f"[green]→ Converting all {len(files)} files[/green]")
+            return files
+
+    def select_specific_files(self, files: List[Path]) -> List[Path]:
+        """Allow user to select specific files by number"""
+        console.print(f"\n[bold]📋 Select files to convert:[/bold]")
+        console.print("[dim]Enter numbers separated by commas (e.g., 1,2,4 or 1-3,5)[/dim]")
+        console.print("[dim]Or press Enter to convert all files[/dim]")
+        console.print()
+
+        try:
+            selection = input("Files to convert: ").strip()
+
+            # If no selection, convert all
+            if not selection:
+                console.print("[yellow]→ No selection made, converting all files[/yellow]")
+                return files
+
+            # Parse selection (support both comma-separated and ranges)
+            selected_files = []
+            parts = selection.split(',')
+
+            for part in parts:
+                part = part.strip()
+                if '-' in part:
+                    # Handle ranges like "1-3"
+                    try:
+                        start, end = map(int, part.split('-'))
+                        for idx in range(start-1, end):  # Convert to 0-based indexing
+                            if 0 <= idx < len(files):
+                                selected_files.append(files[idx])
+                    except ValueError:
+                        continue
+                else:
+                    # Handle individual numbers
+                    try:
+                        idx = int(part) - 1  # Convert to 0-based indexing
+                        if 0 <= idx < len(files):
+                            selected_files.append(files[idx])
+                    except ValueError:
+                        continue
+
+            # Remove duplicates while preserving order
+            selected_files = list(dict.fromkeys(selected_files))
+
+            if selected_files:
+                console.print(f"[green]→ Selected {len(selected_files)} file(s) for conversion[/green]")
+                # Show selected files
+                for i, file in enumerate(selected_files, 1):
+                    console.print(f"  {i}. [cyan]{file.name}[/cyan]")
+                return selected_files
+            else:
+                console.print("[yellow]→ No valid files selected, converting all files[/yellow]")
+                return files
+
+        except KeyboardInterrupt:
+            console.print("\n[yellow]→ Selection cancelled, converting all files[/yellow]")
             return files
 
     def show_conversion_settings(self, files: List[Path]) -> None:
