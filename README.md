@@ -41,5 +41,4 @@ python convert.py
 - Next ideas: waveform preview, per‑file overrides, and presets export/import
 
 ## License
-Personal portfolio project — not for production use.
-
+All rights reserved. Personal portfolio project — not for production use.
