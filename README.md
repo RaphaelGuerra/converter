@@ -1,5 +1,18 @@
 # Audio Converter (M4A → MP3)
 
+Last updated: 2025-10-22
+
+## Table of Contents
+
+<!-- TOC start -->
+- [What It Does](#what-it-does)
+- [How It Works](#how-it-works)
+- [Run Locally](#run-locally)
+- [Tech Stack](#tech-stack)
+- [Status & Learnings](#status-learnings)
+- [License](#license)
+<!-- TOC end -->
+
 Simple, interactive CLI to convert M4A audio files into MP3 with three quality presets.
 
 This is a small portfolio side project for learning — CLI UX, bitrate targeting with FFmpeg, batch selection, and progress feedback. It is not a production tool.
