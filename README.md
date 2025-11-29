@@ -53,6 +53,16 @@ python setup.py
 python convert.py
 ```
 
+## Usage
+
+```bash
+# Convert all .m4a files in input/ with Medium preset (default)
+python convert.py
+
+# Convert with Small preset for tighter size targets
+python convert.py --quality small
+```
+
 ## Tech Stack
 
 - Python + FFmpeg
