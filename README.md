@@ -1,7 +1,6 @@
 # Audio Converter (M4A → MP3)
 
-[![Lint](https://github.com/RaphaelGuerra/converter/actions/workflows/readme-lint.yml/badge.svg)](https://github.com/RaphaelGuerra/converter/actions/workflows/readme-lint.yml)
-[![Security](https://github.com/RaphaelGuerra/converter/actions/workflows/security.yml/badge.svg)](https://github.com/RaphaelGuerra/converter/actions/workflows/security.yml)
+Last updated: 2025-11-30
 
 ## Table of Contents
 
@@ -9,10 +8,15 @@
 - [What It Does](#what-it-does)
 - [How It Works](#how-it-works)
 - [Run Locally](#run-locally)
+- [Usage](#usage)
 - [Tech Stack](#tech-stack)
 - [Status & Learnings](#status--learnings)
 - [License](#license)
 <!-- TOC end -->
+
+[![Lint](https://github.com/RaphaelGuerra/converter/actions/workflows/readme-lint.yml/badge.svg)](https://github.com/RaphaelGuerra/converter/actions/workflows/readme-lint.yml)
+[![Security](https://github.com/RaphaelGuerra/converter/actions/workflows/security.yml/badge.svg)](https://github.com/RaphaelGuerra/converter/actions/workflows/security.yml)
+
 
 Simple, interactive CLI to convert M4A audio files into MP3 with three quality
 presets.
