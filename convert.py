@@ -4,6 +4,7 @@
 Python version with visual monitoring and smart compression
 """
 
+import argparse
 import subprocess
 from pathlib import Path
 from typing import List, Dict
@@ -48,10 +49,17 @@ class AudioConverter:
         }
     }
 
-    def __init__(self, input_dir: str = "input", output_dir: str = "output", quality: str = "medium"):
+    def __init__(
+        self,
+        input_dir: str = "input",
+        output_dir: str = "output",
+        quality: str = "medium",
+        quality_locked: bool = False,
+    ):
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
         self.quality = quality
+        self.quality_locked = quality_locked
         self.max_size_mb = 16
         self.max_size_bytes = self.max_size_mb * 1024 * 1024
         self.compression_factor = self.QUALITY_LEVELS[quality]['compression_factor']
@@ -442,14 +450,18 @@ class AudioConverter:
             return
 
         # Step 1: Quality Selection
-        console.print("\n[dim]First, let's choose your compression quality:[/dim]")
-        selected_quality = self.select_quality()
-        self.update_quality(selected_quality)
+        if self.quality_locked:
+            console.print(f"[green]→ Quality set to: {self.QUALITY_LEVELS[self.quality]['name']}[/green]")
+        else:
+            console.print("\n[dim]First, let's choose your compression quality:[/dim]")
+            selected_quality = self.select_quality()
+            self.update_quality(selected_quality)
 
         # Optional: Show detailed quality info
-        show_info = input("Show detailed quality information? [y/N]: ").strip().lower()
-        if show_info == 'y':
-            self.show_quality_info()
+        if not self.quality_locked:
+            show_info = input("Show detailed quality information? [y/N]: ").strip().lower()
+            if show_info == 'y':
+                self.show_quality_info()
 
         # Find M4A files in input directory
         files = self.find_m4a_files()
@@ -479,7 +491,18 @@ class AudioConverter:
 
 def main():
     """Run the interactive M4A to MP3 converter"""
-    converter = AudioConverter('input', 'output')
+    parser = argparse.ArgumentParser(description="M4A to MP3 Converter")
+    parser.add_argument("--input", default="input", help="Input directory (default: input)")
+    parser.add_argument("--output", default="output", help="Output directory (default: output)")
+    parser.add_argument("--quality", choices=["small", "medium", "large"], help="Quality preset")
+    args = parser.parse_args()
+
+    converter = AudioConverter(
+        args.input,
+        args.output,
+        args.quality or "medium",
+        quality_locked=bool(args.quality),
+    )
     converter.run()
 
 
