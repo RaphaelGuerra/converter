@@ -4,6 +4,7 @@
 Python version with visual monitoring and smart compression
 """
 
+import subprocess
 from pathlib import Path
 from typing import List, Dict
 
@@ -64,6 +65,17 @@ class AudioConverter:
         console.print("[bold blue]🎵 M4A to MP3 Converter[/bold blue] [dim]v3.0[/dim]")
         console.print("[green]Smart compression under 16MB[/green]")
         console.print()
+
+    def check_ffmpeg(self) -> bool:
+        """Verify ffmpeg is available before processing."""
+        try:
+            subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True, check=True)
+            return True
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            console.print("[red]❌ FFmpeg not found. Please install it first.[/red]")
+            console.print("[dim]macOS: brew install ffmpeg[/dim]")
+            console.print("[dim]Ubuntu/Debian: sudo apt install ffmpeg[/dim]")
+            return False
 
     def find_m4a_files(self) -> List[Path]:
         """Find all M4A files in input directory"""
@@ -425,6 +437,9 @@ class AudioConverter:
     def run(self):
         """Complete conversion process with quality selection"""
         self.show_welcome()
+
+        if not self.check_ffmpeg():
+            return
 
         # Step 1: Quality Selection
         console.print("\n[dim]First, let's choose your compression quality:[/dim]")
