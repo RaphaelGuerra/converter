@@ -63,6 +63,9 @@ python convert.py
 
 # Convert with Small preset for tighter size targets
 python convert.py --quality small
+
+# Preview estimated output sizes without encoding
+python convert.py --dry-run
 ```
 
 ## Tech Stack

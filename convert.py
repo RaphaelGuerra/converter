@@ -54,11 +54,13 @@ class AudioConverter:
         input_dir: str = "input",
         output_dir: str = "output",
         quality: str = "medium",
+        dry_run: bool = False,
         quality_locked: bool = False,
     ):
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
         self.quality = quality
+        self.dry_run = dry_run
         self.quality_locked = quality_locked
         self.max_size_mb = 16
         self.max_size_bytes = self.max_size_mb * 1024 * 1024
@@ -129,6 +131,11 @@ class AudioConverter:
 
         min_bitrate, max_bitrate = quality_ranges[self.quality]
         return max(min_bitrate, min(max_bitrate, bitrate_kbps))
+
+    def estimate_output_bytes(self, duration_seconds: float) -> int:
+        """Estimate output size in bytes for a given duration."""
+        bitrate = self.calculate_optimal_bitrate(duration_seconds)
+        return int((bitrate * 1000 * duration_seconds) / 8)
 
     def show_quality_info(self):
         """Display information about all quality levels"""
@@ -315,6 +322,27 @@ class AudioConverter:
         console.print(f"📁 Output directory: [cyan]{self.output_dir}[/cyan]")
         console.print()
 
+    def show_dry_run_summary(self, files: List[Path]) -> None:
+        """Show estimated output sizes without encoding."""
+        if len(files) == 0:
+            return
+
+        console.print("\n[bold yellow]🧪 Dry run only (no files will be written)[/bold yellow]")
+        total_estimated = 0
+        for file_path in files:
+            info = self.get_audio_info(file_path)
+            if info['duration'] > 0:
+                estimated_bytes = self.estimate_output_bytes(info['duration'])
+                total_estimated += estimated_bytes
+                estimated_mb = estimated_bytes / (1024 * 1024)
+                console.print(f"  [cyan]{file_path.name}[/cyan] → ~{estimated_mb:.1f}MB")
+            else:
+                console.print(f"  [cyan]{file_path.name}[/cyan] → Unknown duration")
+
+        total_estimated_mb = total_estimated / (1024 * 1024)
+        console.print(f"\n[green]Estimated total output: {total_estimated_mb:.1f}MB[/green]")
+        console.print("[dim]Run without --dry-run to perform conversion.[/dim]")
+
     def convert_file(self, input_path: Path, output_path: Path, progress_callback=None) -> Dict:
         """Convert single file with progress tracking"""
         try:
@@ -483,6 +511,9 @@ class AudioConverter:
 
         # Show settings and convert
         self.show_conversion_settings(selected_files)
+        if self.dry_run:
+            self.show_dry_run_summary(selected_files)
+            return
         results = self.convert_files(selected_files)
         self.show_summary(results)
 
@@ -495,12 +526,14 @@ def main():
     parser.add_argument("--input", default="input", help="Input directory (default: input)")
     parser.add_argument("--output", default="output", help="Output directory (default: output)")
     parser.add_argument("--quality", choices=["small", "medium", "large"], help="Quality preset")
+    parser.add_argument("--dry-run", action="store_true", help="Estimate output sizes without encoding")
     args = parser.parse_args()
 
     converter = AudioConverter(
         args.input,
         args.output,
         args.quality or "medium",
+        dry_run=args.dry_run,
         quality_locked=bool(args.quality),
     )
     converter.run()
