@@ -66,6 +66,9 @@ python convert.py --quality small
 
 # Preview estimated output sizes without encoding
 python convert.py --dry-run
+
+# Convert everything without prompts (defaults to Medium unless --quality is set)
+python convert.py --convert-all
 ```
 
 ## Tech Stack

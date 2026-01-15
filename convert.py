@@ -56,12 +56,14 @@ class AudioConverter:
         quality: str = "medium",
         dry_run: bool = False,
         quality_locked: bool = False,
+        convert_all: bool = False,
     ):
         self.input_dir = Path(input_dir)
         self.output_dir = Path(output_dir)
         self.quality = quality
         self.dry_run = dry_run
         self.quality_locked = quality_locked
+        self.convert_all = convert_all
         self.max_size_mb = 16
         self.max_size_bytes = self.max_size_mb * 1024 * 1024
         self.compression_factor = self.QUALITY_LEVELS[quality]['compression_factor']
@@ -478,7 +480,7 @@ class AudioConverter:
             return
 
         # Step 1: Quality Selection
-        if self.quality_locked:
+        if self.quality_locked or self.convert_all:
             console.print(f"[green]→ Quality set to: {self.QUALITY_LEVELS[self.quality]['name']}[/green]")
         else:
             console.print("\n[dim]First, let's choose your compression quality:[/dim]")
@@ -486,7 +488,7 @@ class AudioConverter:
             self.update_quality(selected_quality)
 
         # Optional: Show detailed quality info
-        if not self.quality_locked:
+        if not self.quality_locked and not self.convert_all:
             show_info = input("Show detailed quality information? [y/N]: ").strip().lower()
             if show_info == 'y':
                 self.show_quality_info()
@@ -503,7 +505,7 @@ class AudioConverter:
         self.show_files(files)
 
         # Select files (simple process)
-        selected_files = self.select_files(files)
+        selected_files = files if self.convert_all else self.select_files(files)
 
         if len(selected_files) == 0:
             console.print("[yellow]No files to convert.[/yellow]")
@@ -527,6 +529,7 @@ def main():
     parser.add_argument("--output", default="output", help="Output directory (default: output)")
     parser.add_argument("--quality", choices=["small", "medium", "large"], help="Quality preset")
     parser.add_argument("--dry-run", action="store_true", help="Estimate output sizes without encoding")
+    parser.add_argument("--convert-all", action="store_true", help="Convert all input files without prompts")
     args = parser.parse_args()
 
     converter = AudioConverter(
@@ -535,6 +538,7 @@ def main():
         args.quality or "medium",
         dry_run=args.dry_run,
         quality_locked=bool(args.quality),
+        convert_all=args.convert_all,
     )
     converter.run()
 
